@@ -238,6 +238,16 @@
   #combo-flash.show { animation: comboAnim .7s steps(6) forwards; }
   @keyframes comboAnim { 0%{opacity:1;transform:translate(-50%,-50%) scale(.5)} 20%{transform:translate(-50%,-50%) scale(1.3)} 70%{opacity:1} 100%{opacity:0;transform:translate(-50%,-90%)} }
 
+  /* 일시정지 블랙아웃 */
+  #pause-blackout {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: #000;
+    z-index: 8;
+  }
+  #pause-blackout.active { display: block; }
+
   /* Input bar */
   #input-bar {
     position:absolute; bottom:60px; left:45%; transform:translateX(-50%);
@@ -329,6 +339,7 @@
     </div>
     <div id="danger-line"><div id="danger-label">▼ DANGER ZONE ▼</div></div>
     <div id="combo-flash"></div>
+    <div id="pause-blackout"></div>
 
     <!-- Floating Input -->
     <div id="input-bar">
@@ -394,7 +405,26 @@
       <button class="pbtn pbtn-blue"  onclick="tryStart()">▶ START</button>
       <button class="pbtn pbtn-green" onclick="openRankingOverlay()">🏆 RANKING</button>
     </div>
-    <div class="osub" style="font-size:12px;">ESC = 일시정지 &nbsp;|&nbsp; ♥×3 라이프 &nbsp;|&nbsp; 5레벨</div>
+    <div class="osub" style="font-size:12px;">ESC = 일시정지 &nbsp;|&nbsp; ♥×3 라이프 &nbsp;|&nbsp; 10레벨</div>
+
+    <!-- 업데이트 공지 -->
+    <div style="
+      width:100%; border:2px solid var(--mid);
+      background:#fffde8; padding:12px 16px;
+      font-family:'VT323',monospace; font-size:18px;
+      color:var(--dark); line-height:2; letter-spacing:1px;
+      box-shadow: 3px 3px 0 var(--mid);
+    ">
+      <div style="font-family:'Press Start 2P',monospace; font-size:9px; color:var(--accent); letter-spacing:2px; margin-bottom:6px;">★ 업데이트 공지 ★</div>
+      ✅ 단어 클리어시 뜻 노출<br>
+      ✅ 번역 기능 삭제<br>
+      ✅ 복사·붙여넣기 기능 삭제<br>
+      ✅ 버그 악용자 랭킹 삭제<br>
+      <span style="font-size:15px; color:var(--mid);">- ㅈㅅ2</span>
+      <div style="margin-top:8px; font-family:'Press Start 2P',monospace; font-size:8px; color:var(--accent2); letter-spacing:1px; text-align:center; line-height:1.8;">
+        정정당당하게<br>자신의 영타실력을 증명하세요!
+      </div>
+    </div>
   </div>
 </div>
 
@@ -514,11 +544,16 @@ let nickname     = '';
 let wpmHistory   = [], currentWpm = 0, gameStartTime = 0;
 
 const LEVELS = [
-  { speed: 0.52, spawnInterval: 2400, maxBombs: 6 },
-  { speed: 0.68, spawnInterval: 1900, maxBombs: 7 },
-  { speed: 0.85, spawnInterval: 1500, maxBombs: 8 },
-  { speed: 1.05, spawnInterval: 1200, maxBombs: 9 },
-  { speed: 1.30, spawnInterval: 900,  maxBombs: 11 },
+  { speed: 0.52, spawnInterval: 2400, maxBombs: 6  },
+  { speed: 0.65, spawnInterval: 2000, maxBombs: 7  },
+  { speed: 0.80, spawnInterval: 1700, maxBombs: 7  },
+  { speed: 0.95, spawnInterval: 1450, maxBombs: 8  },
+  { speed: 1.10, spawnInterval: 1250, maxBombs: 8  },
+  { speed: 1.25, spawnInterval: 1100, maxBombs: 9  },
+  { speed: 1.42, spawnInterval: 950,  maxBombs: 9  },
+  { speed: 1.60, spawnInterval: 820,  maxBombs: 10 },
+  { speed: 1.80, spawnInterval: 700,  maxBombs: 11 },
+  { speed: 2.05, spawnInterval: 580,  maxBombs: 12 },
 ];
 const BOMBS_PER_LEVEL = 20;
 
@@ -883,6 +918,7 @@ function startGame() {
 
   ['start-screen','gameover-screen','clear-screen','pause-screen'].forEach(id =>
     document.getElementById(id).classList.remove('active'));
+  document.getElementById('pause-blackout').classList.remove('active');
   pauseBtn.textContent = '⏸ PAUSE';
   pauseBtn.classList.add('visible');
   updateHUD();
@@ -909,11 +945,13 @@ function togglePause() {
 function pauseGame() {
   paused = true;
   clearTimeout(spawnTimer); cancelAnimationFrame(frameId);
+  document.getElementById('pause-blackout').classList.add('active');
   document.getElementById('pause-screen').classList.add('active');
   pauseBtn.textContent = '▶ RESUME';
 }
 function resumeGame() {
   paused = false;
+  document.getElementById('pause-blackout').classList.remove('active');
   document.getElementById('pause-screen').classList.remove('active');
   pauseBtn.textContent = '⏸ PAUSE';
   scheduleSpawn();
@@ -1014,7 +1052,17 @@ function showWpmPop(wpm, x, y) {
    INPUT
 ══════════════════════════════════════════ */
 wordInput.addEventListener('input', matchHighlight);
-wordInput.addEventListener('keydown', e => { if (e.key==='Enter') checkWord(); });
+wordInput.addEventListener('keydown', e => {
+  // 붙여넣기 차단 (Ctrl+V, Ctrl+A, Ctrl+X, Ctrl+C)
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'Enter') checkWord();
+});
+// 마우스 우클릭 붙여넣기도 차단
+wordInput.addEventListener('paste', e => e.preventDefault());
+wordInput.addEventListener('contextmenu', e => e.preventDefault());
 
 function checkWord() {
   if (paused) return;
@@ -1063,14 +1111,19 @@ function showCombo(c, pts) {
   comboFlash.classList.add('show');
 }
 function checkLevelUp() {
-  if (totalCleared >= level*BOMBS_PER_LEVEL && level < LEVELS.length) {
-    level++; updateHUD();
+  if (totalCleared >= level * BOMBS_PER_LEVEL) {
+    if (level < LEVELS.length) {
+      level++;
+    }
+    // 레벨 10 이후엔 레벨 유지, 계속 진행 (클리어 없음)
+    updateHUD();
     comboFlash.classList.remove('show'); void comboFlash.offsetWidth;
-    comboFlash.textContent = `★ LEVEL ${level}! ★`;
+    comboFlash.textContent = level < LEVELS.length + 1
+      ? `★ LEVEL ${level}! ★`
+      : `★ MAX LEVEL! ★`;
     comboFlash.style.color = 'var(--accent)';
     comboFlash.classList.add('show');
   }
-  if (level >= LEVELS.length && totalCleared >= LEVELS.length*BOMBS_PER_LEVEL) gameClear();
 }
 
 /* ══════════════════════════════════════════
