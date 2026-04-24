@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+<meta charset="UTF-8">
+<title>WORD RAIN — 수능 영단어 타자게임</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+  :root {
+    --bg: #f5f0e8;
+    --panel-bg: #e8e0d0;
+    --dot: #c8bfaf;
+    --accent:  #d43000;
+    --accent2: #0055cc;
+    --accent3: #007700;
+    --dark: #1a1008;
+    --mid:  #5a4a30;
+    --sidebar-w: 440px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg);
+    background-image: radial-gradient(circle, var(--dot) 1.2px, transparent 1.2px);
+    background-size: 20px 20px;
+    color: var(--dark);
+    font-family: 'Press Start 2P', monospace;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+  }
+
+  /* ════════════════════════════════
+     HEADER
+  ════════════════════════════════ */
+  #header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 14px;
+    background: var(--panel-bg);
+    border-bottom: 3px solid var(--dark);
+    box-shadow: 0 3px 0 var(--mid);
+    flex-shrink: 0;
+    z-index: 10;
+  }
+  #title { font-size: 14px; color: var(--accent); text-shadow: 2px 2px 0 var(--dark); letter-spacing: 2px; }
+  .stat-block { display: flex; gap: 12px; align-items: center; }
+  .stat { text-align: center; }
+  .stat-label { font-size: 6px; color: var(--mid); letter-spacing: 1px; margin-bottom: 1px; }
+  .stat-value { font-family: 'VT323', monospace; font-size: 24px; color: var(--accent2); line-height: 1; text-shadow: 1px 1px 0 var(--dark); }
+
+  .hdr-btn {
+    font-family: 'Press Start 2P', monospace; font-size: 7px;
+    padding: 5px 9px; border: 3px solid var(--dark);
+    cursor: pointer; box-shadow: 3px 3px 0 var(--mid); letter-spacing: 1px;
+    transition: transform .05s, box-shadow .05s;
+  }
+  .hdr-btn:hover  { transform: translate(1px,1px); box-shadow: 2px 2px 0 var(--mid); }
+  .hdr-btn:active { transform: translate(3px,3px); box-shadow: none; }
+  #pause-btn { background: var(--dark); color: var(--bg); display: none; }
+  #pause-btn.visible { display: block; }
+
+  /* ════════════════════════════════
+     MAIN ROW  (game-area + sidebar)
+  ════════════════════════════════ */
+  #main-row {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Game Area ── */
+  #game-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  #game-area::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(180,160,140,0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(180,160,140,0.12) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none; z-index: 1;
+  }
+
+  /* ════════════════════════════════
+     RIGHT SIDEBAR
+  ════════════════════════════════ */
+  #sidebar {
+    width: var(--sidebar-w);
+    flex-shrink: 0;
+    background: var(--panel-bg);
+    border-left: 3px solid var(--dark);
+    box-shadow: -3px 0 0 var(--mid);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 5;
+  }
+
+  /* ── Stats block ── */
+  #sb-stats {
+    padding: 16px 18px;
+    border-bottom: 3px solid var(--dot);
+    display: flex; flex-direction: column; gap: 4px;
+    background: var(--dark);
+    flex-shrink: 0;
+  }
+  .sb-stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 2px 0; }
+  .sb-stat-label { font-size: 11px; color: var(--dot); letter-spacing: 2px; }
+  .sb-stat-val   { font-family: 'VT323', monospace; font-size: 38px; color: var(--accent2); line-height: 1; }
+  #sb-score-val  { font-size: 70px; color: #ffd700; text-shadow: 3px 3px 0 #443300; line-height: 0.9; }
+  #sb-level-val  { font-size: 70px; color: #00ff88; text-shadow: 3px 3px 0 #003322; line-height: 0.9; }
+  #sb-cleared-val{ font-size: 50px; color: var(--accent); text-shadow: 2px 2px 0 #440000; }
+  #sb-next-val   { color: var(--dot); font-size: 28px; }
+
+  /* ── Ranking ── */
+  #sb-rank-header {
+    padding: 10px 16px 8px;
+    font-size: 14px; letter-spacing: 2px; color: var(--mid);
+    border-bottom: 2px solid var(--dot);
+    display: flex; align-items: center; gap: 8px;
+  }
+  #sb-rank-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  #sb-rank-list::-webkit-scrollbar { width: 6px; }
+  #sb-rank-list::-webkit-scrollbar-thumb { background: var(--dot); }
+
+  .rank-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid rgba(200,191,175,0.4);
+    transition: background .15s;
+  }
+  .rank-row.me   { background: rgba(0,85,204,0.1); }
+  .rank-row.top1 { background: rgba(255,215,0,0.12); }
+  .rank-row.top2 { background: rgba(192,192,192,0.1); }
+  .rank-row.top3 { background: rgba(205,127,50,0.08); }
+
+  .rank-medal { font-size: 32px; flex-shrink: 0; width: 38px; text-align: center; }
+  .rank-num   { font-family:'VT323',monospace; font-size:36px; color:var(--mid); flex-shrink:0; width:38px; text-align:center; }
+  .rank-info  { flex: 1; min-width: 0; }
+  .rank-name  { font-family:'VT323',monospace; font-size:36px; color:var(--dark); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.1; }
+  .rank-score { font-family:'VT323',monospace; font-size:28px; color:var(--accent2); }
+  .rank-wpm   { font-family:'VT323',monospace; font-size:28px; color:var(--accent3); flex-shrink:0; white-space:nowrap; text-align:right; }
+
+  .rank-empty { font-family:'VT323',monospace; font-size:28px; color:var(--mid); text-align:center; padding:28px 12px; line-height:2; letter-spacing:1px; }
+
+  /* ════════════════════════════════
+     BOMBS
+  ════════════════════════════════ */
+  .word-bomb {
+    position: absolute;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    z-index: 3;
+  }
+  .bomb-pixel {
+    width: 18px; height: 18px; background: var(--dark); border-radius: 50%;
+    position: relative; box-shadow: 2px -3px 0 0 var(--mid), 3px -5px 0 0 var(--accent);
+  }
+  .bomb-pixel::after {
+    content: ''; position: absolute; width: 5px; height: 5px;
+    background: rgba(255,255,255,0.45); border-radius: 50%; top: 3px; left: 3px;
+  }
+  .bomb-text {
+    font-family: 'VT323', monospace; font-size: 38px; letter-spacing: 3px;
+    color: var(--dark); background: var(--panel-bg);
+    border: 3px solid var(--dark); padding: 2px 14px; white-space: nowrap;
+    box-shadow: 3px 3px 0 var(--mid);
+    transition: color .1s, border-color .1s, background .1s, box-shadow .1s;
+    line-height: 1.1;
+  }
+  .word-bomb.matched .bomb-text { color:var(--accent2); border-color:var(--accent2); background:#d8eaff; box-shadow:3px 3px 0 var(--accent2); }
+  .word-bomb.danger  .bomb-text { color:var(--accent);  border-color:var(--accent);  background:#ffe0d8; box-shadow:3px 3px 0 var(--accent); animation:pixShake .25s steps(2) infinite; }
+  .word-bomb.exploding { animation: pixExplode .4s steps(4) forwards; }
+  .word-bomb.cleared   { animation: pixClear   .35s steps(4) forwards; }
+
+  @keyframes pixShake   { 0%,100%{transform:translateX(0)} 50%{transform:translateX(4px)} }
+  @keyframes pixExplode { 0%{transform:scale(1);opacity:1} 40%{transform:scale(1.8);opacity:.8;filter:brightness(4) saturate(0)} 100%{transform:scale(3);opacity:0} }
+  @keyframes pixClear   { 0%{transform:scale(1) translateY(0);opacity:1} 30%{transform:scale(1.3) translateY(-10px);filter:brightness(3)} 100%{transform:scale(.4) translateY(-50px);opacity:0} }
+
+  /* WPM pop */
+  .wpm-pop {
+    position: absolute; font-family:'Press Start 2P',monospace; font-size:10px;
+    pointer-events:none; z-index:25; white-space:nowrap;
+    animation: wpmFloat 1s steps(8) forwards;
+  }
+  @keyframes wpmFloat { 0%{opacity:1;transform:translateY(0)} 70%{opacity:1} 100%{opacity:0;transform:translateY(-36px)} }
+
+  /* 한글 뜻 팝업 */
+  .meaning-pop {
+    position: absolute;
+    font-family: 'VT323', monospace;
+    font-size: 50px;
+    color: var(--dark);
+    background: #fffde8;
+    border: 3px solid var(--dark);
+    box-shadow: 3px 3px 0 var(--mid);
+    padding: 2px 16px;
+    pointer-events: none;
+    z-index: 26;
+    white-space: nowrap;
+    letter-spacing: 2px;
+    line-height: 1;
+    animation: meaningFloat 1.6s steps(10) forwards;
+  }
+  @keyframes meaningFloat {
+    0%   { opacity:1; transform:translateY(0) scale(1); }
+    15%  { transform:translateY(-6px) scale(1.05); }
+    70%  { opacity:1; }
+    100% { opacity:0; transform:translateY(-50px); }
+  }
+
+  /* Danger zone */
+  #danger-line {
+    position:absolute; bottom:0; left:0; right:0; height:44px;
+    background:repeating-linear-gradient(90deg,rgba(212,48,0,.08) 0,rgba(212,48,0,.08) 10px,transparent 10px,transparent 20px);
+    border-top:3px dashed rgba(212,48,0,.3); pointer-events:none; z-index:2;
+  }
+  #danger-label { font-family:'Press Start 2P',monospace; font-size:7px; position:absolute; right:12px; bottom:8px; color:rgba(212,48,0,.35); letter-spacing:2px; }
+
+  /* Level bar */
+  #lvbar-wrap { position:absolute; top:8px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:6px; z-index:4; pointer-events:none; }
+  #lvbar-label { font-size:6px; color:var(--mid); white-space:nowrap; }
+  #lvbar-outer { width:110px; height:8px; border:2px solid var(--mid); background:var(--bg); }
+  #lvbar-fill  { height:100%; background:repeating-linear-gradient(90deg,var(--accent3) 0,var(--accent3) 6px,#005500 6px,#005500 8px); width:0%; transition:width .3s steps(10); }
+
+  /* Combo flash */
+  #combo-flash { position:absolute; top:36%; left:40%; transform:translate(-50%,-50%); font-family:'Press Start 2P',monospace; font-size:17px; text-shadow:3px 3px 0 var(--dark); pointer-events:none; opacity:0; z-index:20; white-space:nowrap; letter-spacing:2px; }
+  #combo-flash.show { animation: comboAnim .7s steps(6) forwards; }
+  @keyframes comboAnim { 0%{opacity:1;transform:translate(-50%,-50%) scale(.5)} 20%{transform:translate(-50%,-50%) scale(1.3)} 70%{opacity:1} 100%{opacity:0;transform:translate(-50%,-90%)} }
+
+  /* 일시정지 블랙아웃 */
+  #pause-blackout {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: #000;
+    z-index: 8;
+  }
+  #pause-blackout.active { display: block; }
+
+  /* Input bar */
+  #input-bar {
+    position:absolute; bottom:60px; left:45%; transform:translateX(-50%);
+    display:flex; align-items:center; gap:10px; z-index:10;
+    background:var(--panel-bg); border:3px solid var(--dark); box-shadow:5px 5px 0 var(--mid);
+    padding:8px 14px; width:430px; max-width:80%;
+  }
+  #input-label { font-size:8px; color:var(--mid); letter-spacing:1px; white-space:nowrap; }
+  #word-input {
+    flex:1; background:#fff; border:3px solid var(--dark); box-shadow:3px 3px 0 var(--mid);
+    color:var(--dark); font-family:'VT323',monospace; font-size:32px; letter-spacing:3px;
+    padding:4px 12px; outline:none; caret-color:var(--accent); transition:border-color .1s,box-shadow .1s;
+  }
+  #word-input:focus { border-color:var(--accent2); box-shadow:3px 3px 0 var(--accent2); }
+  #word-input.wrong { border-color:var(--accent); box-shadow:3px 3px 0 var(--accent); animation:inputShake .2s steps(3); }
+  @keyframes inputShake { 0%,100%{transform:translateX(0)} 33%{transform:translateX(-6px)} 66%{transform:translateX(6px)} }
+
+  /* ════════════════════════════════
+     OVERLAYS
+  ════════════════════════════════ */
+  .overlay { display:none; position:fixed; inset:0; background:rgba(245,240,232,0.93); z-index:50; flex-direction:column; align-items:center; justify-content:center; }
+  .overlay.active { display:flex; }
+  .obox { display:flex; flex-direction:column; align-items:center; gap:16px; background:var(--panel-bg); border:4px solid var(--dark); box-shadow:6px 6px 0 var(--mid); padding:26px 40px; max-width:520px; width:90%; }
+  .otitle { font-size:24px; letter-spacing:4px; text-shadow:4px 4px 0 var(--mid); line-height:1.3; text-align:center; }
+  .osub { font-family:'VT323',monospace; font-size:19px; color:var(--mid); letter-spacing:2px; text-align:center; line-height:2; }
+  .btn-row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+  .pbtn { font-family:'Press Start 2P',monospace; font-size:9px; letter-spacing:2px; padding:9px 18px; border:3px solid var(--dark); cursor:pointer; box-shadow:4px 4px 0 var(--dark); transition:transform .05s,box-shadow .05s; }
+  .pbtn:hover  { transform:translate(2px,2px); box-shadow:2px 2px 0 var(--dark); }
+  .pbtn:active { transform:translate(4px,4px); box-shadow:none; }
+  .pbtn-red   { background:var(--accent);   color:#fff; }
+  .pbtn-blue  { background:var(--accent2);  color:#fff; }
+  .pbtn-green { background:var(--accent3);  color:#fff; }
+  .pbtn-dark  { background:var(--dark);     color:var(--bg); }
+  .pbtn-plain { background:var(--panel-bg); color:var(--dark); }
+
+  /* nick input */
+  .nick-input {
+    font-family:'VT323',monospace; font-size:28px; letter-spacing:3px;
+    padding:6px 14px; border:3px solid var(--dark); box-shadow:3px 3px 0 var(--mid);
+    background:#fff; color:var(--dark); outline:none; width:240px; text-align:center;
+  }
+  .nick-input:focus { border-color:var(--accent2); box-shadow:3px 3px 0 var(--accent2); }
+  .nick-label { font-size:8px; color:var(--mid); letter-spacing:2px; }
+
+  /* Word Editor */
+  #editor-panel { display:none; position:fixed; inset:0; background:rgba(245,240,232,0.96); z-index:60; flex-direction:column; align-items:center; justify-content:center; gap:12px; padding:24px; }
+  #editor-panel.active { display:flex; }
+  #editor-title { font-size:13px; letter-spacing:3px; color:var(--accent2); text-shadow:2px 2px 0 var(--dark); }
+  #editor-sub { font-family:'VT323',monospace; font-size:17px; color:var(--mid); letter-spacing:2px; }
+  #word-textarea { width:100%; max-width:460px; height:240px; background:#fff; border:3px solid var(--dark); box-shadow:4px 4px 0 var(--mid); color:var(--dark); font-family:'VT323',monospace; font-size:18px; line-height:1.7; padding:10px 14px; outline:none; resize:none; letter-spacing:1px; }
+  #editor-info { font-size:8px; color:var(--mid); letter-spacing:1px; }
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div id="header">
+  <div id="title">★ WORD RAIN ★</div>
+  <div class="stat-block">
+    <div class="stat">
+      <div class="stat-label">PLAYER</div>
+      <div class="stat-value" id="nick-display" style="font-size:17px;color:var(--dark)">-</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">SCORE</div>
+      <div class="stat-value" id="score-display">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">COMBO</div>
+      <div class="stat-value" id="combo-display">×1</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">LIVES</div>
+      <div class="stat-value" id="lives-display" style="color:var(--accent)">♥♥♥</div>
+    </div>
+    <button class="hdr-btn" id="pause-btn" onclick="togglePause()">⏸ PAUSE</button>
+  </div>
+</div>
+
+<!-- ══ MAIN ROW ══ -->
+<div id="main-row">
+
+  <!-- Game Area -->
+  <div id="game-area">
+    <div id="lvbar-wrap">
+      <div id="lvbar-label">NEXT LV</div>
+      <div id="lvbar-outer"><div id="lvbar-fill"></div></div>
+    </div>
+    <div id="danger-line"><div id="danger-label">▼ DANGER ZONE ▼</div></div>
+    <div id="combo-flash"></div>
+    <div id="pause-blackout"></div>
+
+    <!-- Floating Input -->
+    <div id="input-bar">
+      <div id="input-label">INPUT▶</div>
+      <input type="text" id="word-input"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+        placeholder="type here...">
+    </div>
+  </div>
+
+  <!-- ══ RIGHT SIDEBAR ══ -->
+  <div id="sidebar">
+
+    <!-- Live stats: 점수 · 레벨 · 단어수 -->
+    <div id="sb-stats">
+      <div class="sb-stat-row">
+        <div class="sb-stat-label">SCORE</div>
+        <div class="sb-stat-val" id="sb-score-val">0</div>
+      </div>
+      <div class="sb-stat-row">
+        <div class="sb-stat-label">LEVEL</div>
+        <div class="sb-stat-val" id="sb-level-val">1</div>
+      </div>
+      <div class="sb-stat-row">
+        <div class="sb-stat-label">단어 수</div>
+        <div class="sb-stat-val" id="sb-cleared-val">0개</div>
+      </div>
+      <div class="sb-stat-row">
+        <div class="sb-stat-label">NEXT LV</div>
+        <div class="sb-stat-val" id="sb-next-val">20개 남음</div>
+      </div>
+    </div>
+
+    <!-- Ranking -->
+    <div id="sb-rank-header">🏆 TOP 10 RANKING</div>
+    <div id="sb-rank-list">
+      <div class="rank-empty" id="sb-rank-empty">아직 기록 없음<br>첫 번째가<br>되어보세요!</div>
+    </div>
+
+  </div><!-- /sidebar -->
+</div><!-- /main-row -->
+
+<!-- ══ OVERLAYS ══ -->
+
+<!-- Start -->
+<div class="overlay active" id="start-screen">
+  <div class="obox" style="gap:14px; max-width:500px;">
+
+    <img src="data:image/jpeg;base64,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" style="width:140px; height:140px; object-fit:contain; image-rendering:pixelated;">
+
+    <!-- 타이틀 -->
+    <div style="font-family:'Press Start 2P',monospace; font-size:32px; color:var(--dark);
+                text-shadow: 4px 4px 0 #888; letter-spacing:4px; line-height:1.2; text-align:center;">
+      WORD<br>RAIN
+    </div>
+
+    <div class="osub" style="font-size:17px; color:var(--mid);">영단어 타자연습 게임<br>닉네임을 입력하고 시작!</div>
+
+    <div class="nick-label">NICKNAME</div>
+    <input class="nick-input" id="nick-input" type="text" maxlength="10" placeholder="이름입력" autocomplete="off" spellcheck="false">
+
+    <div class="btn-row">
+      <button class="pbtn pbtn-blue"  onclick="tryStart()">▶ START</button>
+      <button class="pbtn pbtn-green" onclick="openRankingOverlay()">🏆 RANKING</button>
+    </div>
+    <div class="osub" style="font-size:12px;">ESC = 일시정지 &nbsp;|&nbsp; ♥×3 라이프 &nbsp;|&nbsp; 10레벨</div>
+
+    <!-- 업데이트 공지 -->
+    <div style="
+      width:100%; border:2px solid var(--mid);
+      background:#fffde8; padding:12px 16px;
+      font-family:'VT323',monospace; font-size:18px;
+      color:var(--dark); line-height:2; letter-spacing:1px;
+      box-shadow: 3px 3px 0 var(--mid);
+    ">
+      <div style="font-family:'Press Start 2P',monospace; font-size:9px; color:var(--accent); letter-spacing:2px; margin-bottom:6px;">★ 업데이트 공지 ★</div>
+      ✅ 단어 클리어시 뜻 노출<br>
+      ✅ 번역 기능 삭제<br>
+      ✅ 복사·붙여넣기 기능 삭제<br>
+      ✅ 버그 악용자 랭킹 삭제<br>
+      <span style="font-size:15px; color:var(--mid);">- ㅈㅅ2</span>
+      <div style="margin-top:8px; font-family:'Press Start 2P',monospace; font-size:8px; color:var(--accent2); letter-spacing:1px; text-align:center; line-height:1.8;">
+        정정당당하게<br>자신의 영타실력을 증명하세요!
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pause -->
+<div class="overlay" id="pause-screen">
+  <div class="obox">
+    <div class="otitle" style="color:var(--mid)">PAUSED</div>
+    <div class="btn-row">
+      <button class="pbtn pbtn-dark"  onclick="togglePause()">▶ RESUME</button>
+      <button class="pbtn pbtn-red"   onclick="quitToMenu()">■ QUIT</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game Over -->
+<div class="overlay" id="gameover-screen">
+  <div class="obox" style="gap:10px; max-width:480px;">
+
+    <div style="font-size:52px; letter-spacing:8px; line-height:1;">😂😂😂</div>
+    <div class="otitle" style="color:var(--accent); font-size:18px; letter-spacing:3px;">이런..!</div>
+    <div class="osub" style="font-size:20px; color:var(--mid);">안타깝게도 여기까지입니다.</div>
+
+    <div style="width:100%; border-top:2px solid var(--dot); padding-top:12px; text-align:center; display:flex; flex-direction:column; gap:6px;">
+      <div style="font-size:11px; font-family:'Press Start 2P',monospace; color:var(--mid); letter-spacing:2px;">당신의 점수는</div>
+      <div id="go-score" style="font-family:'VT323',monospace; font-size:80px; color:var(--dark); line-height:1; text-shadow:2px 2px 0 #888;">0</div>
+
+      <div style="font-size:11px; font-family:'Press Start 2P',monospace; color:var(--mid); letter-spacing:2px; margin-top:4px;">레벨</div>
+      <div id="go-level" style="font-family:'VT323',monospace; font-size:60px; color:var(--dark); line-height:1; text-shadow:2px 2px 0 #888;">1 레벨</div>
+    </div>
+
+    <div style="width:100%; border-top:2px solid var(--dot); padding-top:12px; text-align:center; display:flex; flex-direction:column; gap:4px;">
+      <div style="font-size:11px; font-family:'Press Start 2P',monospace; color:var(--mid); letter-spacing:2px;">당신의 랭킹은</div>
+      <div id="go-rank" style="font-family:'VT323',monospace; font-size:120px; color:var(--accent); line-height:1; text-shadow:4px 4px 0 #440000;">-위</div>
+    </div>
+
+    <div class="btn-row" style="margin-top:4px;">
+      <button class="pbtn pbtn-red"   onclick="startGame()">▶ 다시 도전하기</button>
+      <button class="pbtn pbtn-plain" onclick="quitToMenu()">■ 메뉴</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear -->
+<div class="overlay" id="clear-screen">
+  <div class="obox">
+    <div class="otitle" style="color:var(--accent3)">★ CLEAR ★</div>
+    <div class="osub" id="clear-score-text"></div>
+    <button class="pbtn pbtn-green" onclick="startGame()">▶ AGAIN</button>
+  </div>
+</div>
+
+<!-- Word Editor -->
+<div id="editor-panel">
+  <div id="editor-title">✎ WORD LIST EDITOR</div>
+  <div id="editor-sub">한 줄에 하나씩 — 영어 단어만 입력하세요</div>
+  <textarea id="word-textarea" spellcheck="false"></textarea>
+  <div id="editor-info"></div>
+  <div class="btn-row">
+    <button class="pbtn pbtn-blue"  onclick="saveWords()">SAVE</button>
+    <button class="pbtn pbtn-plain" onclick="closeEditor()">CANCEL</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   WORD LIST  (수능 필수 어휘)
+══════════════════════════════════════════ */
+const DEFAULT_WORDS = [
+  "abandon","abolish","absorb","abstract","abundant","accelerate","access",
+  "accommodate","accomplish","accumulate","accurate","achieve","acknowledge",
+  "acquire","adapt","adequate","adjust","admire","adopt","advocate",
+  "affect","afford","aggressive","allocate","alter","ambiguous","ambitious",
+  "anticipate","anxiety","apparent","appreciate","approach","appropriate",
+  "approximate","argue","arise","assess","assign","assume","assure",
+  "attach","attain","attempt","attribute","authentic","available","aware",
+  "balance","barrier","benefit","capacity","challenge","character","circumstance",
+  "collaborate","combine","commit","communicate","compare","compete","complex",
+  "concentrate","conclude","conduct","consequence","consider","contribute",
+  "contrast","convince","cooperate","create","crucial","cultural","decline",
+  "define","demonstrate","depend","derive","describe","determine","develop",
+  "distinguish","distribute","diverse","dominate","emphasize","enable","enhance",
+  "enormous","ensure","establish","evaluate","examine","expand","expect",
+  "experience","explain","exploit","explore","express","extend","extreme",
+  "facilitate","familiar","feature","flexible","focus","function","generate",
+  "identify","ignore","impact","implement","imply","improve","include",
+  "increase","indicate","influence","inform","innovative","interpret","involve",
+  "justify","maintain","manage","measure","motivate","negative","negotiate",
+  "objective","observe","obtain","obvious","occur","oppose","overcome",
+  "participate","perceive","perform","perspective","persuade","positive","prevent",
+  "priority","produce","promote","propose","protect","provide","pursue",
+  "recognize","reflect","relate","relevant","require","research","respond",
+  "reveal","significant","solution","strategy","structure","suggest","support",
+  "survive","sustain","transfer","transform","unique","utilize","various",
+  "achieve","activate","analyze","apply","arrange","calculate","categorize",
+  "clarify","classify","compare","comprehend","confirm","connect","construct",
+  "contrast","convert","cooperate","criticize","deduce","demonstrate","derive",
+  "detect","determine","differentiate","discover","discuss","distinguish",
+  "elaborate","eliminate","estimate","evaluate","examine","explain","explore",
+  "formulate","generalize","hypothesize","identify","illustrate","infer",
+  "integrate","interpret","investigate","justify","modify","observe","organize",
+  "predict","prioritize","process","prove","question","recognize","reconstruct",
+  "reduce","reflect","relate","represent","revise","select","sequence",
+  "simplify","solve","summarize","support","synthesize","test","verify"
+];
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+let words = [...new Set(DEFAULT_WORDS)]; // dedupe
+let wordQueue    = [];   // shuffled queue — no repeat until exhausted
+let bombs        = [];
+let score        = 0, combo = 1, lives = 3, level = 1;
+let gameRunning  = false, paused = false;
+let spawnTimer   = null, frameId = null, totalCleared = 0;
+let nickname     = '';
+let wpmHistory   = [], currentWpm = 0, gameStartTime = 0;
+
+/* ── 치트 방지 변수 ── */
+let wordClearTimes = [];   // 단어별 클리어 시간 기록 (봇 감지용)
+let suspiciousCount = 0;   // 의심 횟수
+let isBanned = false;      // 밴 여부
+
+const LEVELS = Object.freeze([
+  Object.freeze({ speed: 0.52, spawnInterval: 2400, maxBombs: 6  }),
+  Object.freeze({ speed: 0.65, spawnInterval: 2000, maxBombs: 7  }),
+  Object.freeze({ speed: 0.80, spawnInterval: 1700, maxBombs: 7  }),
+  Object.freeze({ speed: 0.95, spawnInterval: 1450, maxBombs: 8  }),
+  Object.freeze({ speed: 1.10, spawnInterval: 1250, maxBombs: 8  }),
+  Object.freeze({ speed: 1.25, spawnInterval: 1100, maxBombs: 9  }),
+  Object.freeze({ speed: 1.42, spawnInterval: 950,  maxBombs: 9  }),
+  Object.freeze({ speed: 1.60, spawnInterval: 820,  maxBombs: 10 }),
+  Object.freeze({ speed: 1.80, spawnInterval: 700,  maxBombs: 11 }),
+  Object.freeze({ speed: 2.05, spawnInterval: 580,  maxBombs: 12 }),
+]);
+const BOMBS_PER_LEVEL = 20;
+
+/* ── DOM ── */
+const gameArea   = document.getElementById('game-area');
+const wordInput  = document.getElementById('word-input');
+const scoreDisp  = document.getElementById('score-display');
+const comboDisp  = document.getElementById('combo-display');
+const livesDisp  = document.getElementById('lives-display');
+const nickDisp   = document.getElementById('nick-display');
+const comboFlash = document.getElementById('combo-flash');
+const lvbarFill  = document.getElementById('lvbar-fill');
+const pauseBtn   = document.getElementById('pause-btn');
+// sidebar
+const sbScoreVal  = document.getElementById('sb-score-val');
+const sbLevelVal  = document.getElementById('sb-level-val');
+const sbClearedVal= document.getElementById('sb-cleared-val');
+const sbNextVal   = document.getElementById('sb-next-val');
+const sbRankList  = document.getElementById('sb-rank-list');
+const sbRankEmpty = document.getElementById('sb-rank-empty');
+
+/* ══════════════════════════════════════════
+   한글 뜻 사전
+══════════════════════════════════════════ */
+const KO = {
+  "abandon":"포기하다","abolish":"폐지하다","absorb":"흡수하다","abstract":"추상적인",
+  "abundant":"풍부한","accelerate":"가속하다","access":"접근하다","accommodate":"수용하다",
+  "accomplish":"성취하다","accumulate":"축적하다","accurate":"정확한","achieve":"달성하다",
+  "acknowledge":"인정하다","acquire":"습득하다","adapt":"적응하다","adequate":"적절한",
+  "adjust":"조정하다","admire":"감탄하다","adopt":"채택하다","advocate":"지지하다",
+  "affect":"영향을 주다","afford":"여유가 있다","aggressive":"공격적인","allocate":"할당하다",
+  "alter":"바꾸다","ambiguous":"모호한","ambitious":"야심찬","anticipate":"예상하다",
+  "anxiety":"불안","apparent":"명백한","appreciate":"감사하다","approach":"접근하다",
+  "appropriate":"적절한","approximate":"대략적인","argue":"주장하다","arise":"발생하다",
+  "assess":"평가하다","assign":"할당하다","assume":"가정하다","assure":"확신시키다",
+  "attach":"붙이다","attain":"달성하다","attempt":"시도하다","attribute":"귀속시키다",
+  "authentic":"진짜의","available":"이용 가능한","aware":"인식하는","balance":"균형",
+  "barrier":"장벽","benefit":"이익","capacity":"용량","challenge":"도전",
+  "character":"성격","circumstance":"상황","collaborate":"협력하다","combine":"결합하다",
+  "commit":"전념하다","communicate":"소통하다","compare":"비교하다","compete":"경쟁하다",
+  "complex":"복잡한","concentrate":"집중하다","conclude":"결론 내리다","conduct":"수행하다",
+  "consequence":"결과","consider":"고려하다","contribute":"기여하다","contrast":"대조하다",
+  "convince":"설득하다","cooperate":"협력하다","create":"창조하다","crucial":"중요한",
+  "cultural":"문화적인","decline":"감소하다","define":"정의하다","demonstrate":"보여주다",
+  "depend":"의존하다","derive":"파생하다","describe":"묘사하다","determine":"결정하다",
+  "develop":"발전시키다","distinguish":"구별하다","distribute":"배분하다","diverse":"다양한",
+  "dominate":"지배하다","emphasize":"강조하다","enable":"가능하게 하다","enhance":"향상시키다",
+  "enormous":"거대한","ensure":"보장하다","establish":"설립하다","evaluate":"평가하다",
+  "examine":"조사하다","expand":"확장하다","expect":"기대하다","experience":"경험하다",
+  "explain":"설명하다","exploit":"이용하다","explore":"탐험하다","express":"표현하다",
+  "extend":"연장하다","extreme":"극단적인","facilitate":"촉진하다","familiar":"익숙한",
+  "feature":"특징","flexible":"유연한","focus":"집중하다","function":"기능하다",
+  "generate":"생성하다","identify":"확인하다","ignore":"무시하다","impact":"영향",
+  "implement":"실행하다","imply":"암시하다","improve":"개선하다","include":"포함하다",
+  "increase":"증가하다","indicate":"나타내다","influence":"영향을 주다","inform":"알리다",
+  "innovative":"혁신적인","interpret":"해석하다","involve":"포함하다","justify":"정당화하다",
+  "maintain":"유지하다","manage":"관리하다","measure":"측정하다","motivate":"동기부여하다",
+  "negative":"부정적인","negotiate":"협상하다","objective":"목표","observe":"관찰하다",
+  "obtain":"얻다","obvious":"명백한","occur":"발생하다","oppose":"반대하다",
+  "overcome":"극복하다","participate":"참여하다","perceive":"인식하다","perform":"수행하다",
+  "perspective":"관점","persuade":"설득하다","positive":"긍정적인","prevent":"예방하다",
+  "priority":"우선순위","produce":"생산하다","promote":"촉진하다","propose":"제안하다",
+  "protect":"보호하다","provide":"제공하다","pursue":"추구하다","recognize":"인식하다",
+  "reflect":"반영하다","relate":"관련시키다","relevant":"관련된","require":"요구하다",
+  "research":"연구하다","respond":"반응하다","reveal":"밝히다","significant":"중요한",
+  "solution":"해결책","strategy":"전략","structure":"구조","suggest":"제안하다",
+  "support":"지원하다","survive":"생존하다","sustain":"지속하다","transfer":"이전하다",
+  "transform":"변환하다","unique":"독특한","utilize":"활용하다","various":"다양한",
+  "activate":"활성화하다","analyze":"분석하다","apply":"적용하다","arrange":"배열하다",
+  "calculate":"계산하다","categorize":"분류하다","clarify":"명확히 하다","classify":"분류하다",
+  "comprehend":"이해하다","confirm":"확인하다","connect":"연결하다","construct":"구성하다",
+  "convert":"변환하다","criticize":"비판하다","deduce":"추론하다","detect":"감지하다",
+  "differentiate":"구별하다","discover":"발견하다","discuss":"논의하다","elaborate":"상세히 설명하다",
+  "eliminate":"제거하다","estimate":"추정하다","formulate":"공식화하다","generalize":"일반화하다",
+  "hypothesize":"가설을 세우다","illustrate":"설명하다","infer":"추론하다","integrate":"통합하다",
+  "investigate":"조사하다","modify":"수정하다","organize":"조직하다","predict":"예측하다",
+  "prioritize":"우선순위를 정하다","process":"처리하다","prove":"증명하다","question":"질문하다",
+  "reconstruct":"재구성하다","reduce":"줄이다","represent":"나타내다","revise":"수정하다",
+  "select":"선택하다","sequence":"순서를 정하다","simplify":"단순화하다","solve":"해결하다",
+  "summarize":"요약하다","synthesize":"종합하다","test":"시험하다","verify":"검증하다"
+};
+
+function showMeaningPop(word, x, y) {
+  const meaning = KO[word];
+  if (!meaning) return;
+  const pop = document.createElement('div');
+  pop.className = 'meaning-pop';
+  pop.textContent = meaning;
+  pop.style.left = Math.max(4, x - 60) + 'px';
+  pop.style.top  = (y - 10) + 'px';
+  gameArea.appendChild(pop);
+  setTimeout(() => pop.remove(), 1600);
+}
+
+/* ══════════════════════════════════════════
+   WORD QUEUE  (no-repeat shuffle)
+══════════════════════════════════════════ */
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+function nextWord() {
+  if (wordQueue.length === 0) wordQueue = shuffleArray(words);
+  return wordQueue.pop();
+}
+function resetQueue() { wordQueue = shuffleArray(words); }
+
+/* ══════════════════════════════════════════
+   RANKING  (Supabase — 팀 공유 랭킹)
+══════════════════════════════════════════ */
+const SB_URL = 'https://mkxyvwhgjpqwgzpzbnwz.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1reHl2d2hnanBxd2d6cHpibnd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MTA4MzksImV4cCI6MjA5MjQ4NjgzOX0.DU3YT_Y7S6y4qCM-Fgw5WZsgSsL70E6YzeAq462GNNA';
+const SB_HDR = { 'Content-Type': 'application/json', 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };
+
+async function loadRanking() {
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/rankings?limit=500`,
+      { headers: SB_HDR }
+    );
+    if (!res.ok) throw new Error();
+    const all = await res.json();
+
+    // 숫자 타입 강제 변환
+    const normalized = all.map(e => ({
+      ...e,
+      score:   Number(e.score)   || 0,
+      cleared: Number(e.cleared) || 0,
+      wpm:     Number(e.wpm)     || 0,
+      level:   Number(e.level)   || 0,
+    }));
+
+    // 닉네임별 단어 최다 기록만 유지
+    const best = {};
+    for (const e of normalized) {
+      if (!best[e.name] || e.cleared > best[e.name].cleared) {
+        best[e.name] = e;
+      }
+    }
+
+    // 단어 갯수 내림차순 정렬 (같으면 점수로 2차 정렬)
+    return Object.values(best)
+      .sort((a, b) => b.cleared - a.cleared || b.score - a.score)
+      .slice(0, 10);
+  } catch (err) {
+    console.error('랭킹 로드 실패:', err);
+    return [];
+  }
+}
+
+async function submitScore(sc, wpm, lv, cleared) {
+  // ── 점수 검증: 물리적으로 불가능한 기록 차단 ──
+  if (isBanned) return; // 봇 감지된 경우 제출 차단
+
+  const elapsedSec = (Date.now() - gameStartTime) / 1000;
+  // 최소 플레이시간 체크: 단어당 최소 1.5초는 걸려야 정상
+  const minExpectedSec = cleared * 1.5;
+  if (elapsedSec < minExpectedSec && cleared > 5) {
+    console.warn('비정상 기록 감지 — 제출 차단');
+    return;
+  }
+  // WPM이 250 초과면 봇으로 판단 (세계 최고 타이퍼가 약 212 WPM)
+  if (wpm > 250) {
+    console.warn('비정상 WPM 감지 — 제출 차단');
+    return;
+  }
+
+  try {
+    // 기존 같은 닉네임 기록 조회
+    const res = await fetch(
+      `${SB_URL}/rest/v1/rankings?name=eq.${encodeURIComponent(nickname)}&order=cleared.desc&limit=1`,
+      { headers: SB_HDR }
+    );
+    const existing = await res.json();
+
+    if (existing.length > 0 && Number(existing[0].cleared) >= cleared) {
+      // 기존 기록이 더 많으면 저장 안 함
+      await renderSidebarRank();
+      return;
+    }
+
+    // 기존 같은 닉네임 기록 전부 삭제
+    await fetch(
+      `${SB_URL}/rest/v1/rankings?name=eq.${encodeURIComponent(nickname)}`,
+      { method: 'DELETE', headers: SB_HDR }
+    );
+
+    // 새 최고기록 삽입
+    await fetch(`${SB_URL}/rest/v1/rankings`, {
+      method: 'POST',
+      headers: { ...SB_HDR, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({
+        name: nickname, score: sc, wpm, level: lv, cleared,
+        date: new Date().toLocaleDateString('ko-KR')
+      })
+    });
+  } catch { /* 네트워크 오류 무시 */ }
+  await renderSidebarRank();
+}
+
+/* ── render sidebar ranking ── */
+async function renderSidebarRank() {
+  sbRankList.innerHTML = '<div class="rank-empty" style="font-size:13px">로딩중...</div>';
+  const list = await loadRanking();
+  sbRankList.innerHTML = '';
+
+  if (!list.length) {
+    sbRankList.innerHTML = '<div class="rank-empty">아직 기록 없음<br>첫 번째가<br>되어보세요!</div>';
+    return;
+  }
+
+  const medals = ['🥇','🥈','🥉'];
+  list.forEach((e, i) => {
+    const isMe = e.name === nickname;
+    const div = document.createElement('div');
+    div.className = 'rank-row' +
+      (i===0?' top1':i===1?' top2':i===2?' top3':'') +
+      (isMe?' me':'');
+
+    const medalOrNum = i < 3
+      ? `<div class="rank-medal">${medals[i]}</div>`
+      : `<div class="rank-num">${i+1}</div>`;
+
+    div.innerHTML = `
+      ${medalOrNum}
+      <div class="rank-info">
+        <div class="rank-name">${e.name}${isMe?' ◀':''}</div>
+        <div class="rank-score">${e.score.toLocaleString()} pts</div>
+        <div style="font-family:'VT323',monospace;font-size:22px;color:var(--mid);">LV.${e.level} &nbsp;·&nbsp; ${e.cleared}단어</div>
+      </div>
+      <div class="rank-wpm">${e.wpm}<br><span style="font-size:18px;color:var(--mid)">WPM</span></div>
+    `;
+    sbRankList.appendChild(div);
+  });
+}
+
+/* ── 30초마다 랭킹 자동 갱신 ── */
+setInterval(() => { if (!document.hidden) renderSidebarRank(); }, 30000);
+
+/* ── 랭킹 팝업 오버레이 (시작화면에서 보기) ── */
+function openRankingOverlay() {
+  // 사이드바 랭킹을 모달로 크게 보여줌
+  const existing = document.getElementById('rank-overlay');
+  if (existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'rank-overlay';
+  overlay.style.cssText = `
+    position:fixed;inset:0;background:rgba(245,240,232,0.96);
+    z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  `;
+  overlay.innerHTML = `
+    <div style="background:var(--panel-bg);border:4px solid var(--dark);box-shadow:6px 6px 0 var(--mid);
+                padding:30px 40px;max-width:600px;width:92%;display:flex;flex-direction:column;align-items:center;gap:16px;">
+      <div style="font-family:'Press Start 2P',monospace;font-size:20px;color:var(--accent3);
+                  text-shadow:3px 3px 0 var(--mid);letter-spacing:3px;">🏆 TOP 10 RANKING</div>
+      <div id="rank-overlay-list" style="width:100%;font-family:'VT323',monospace;">
+        <div style="font-size:24px;color:var(--mid);text-align:center;padding:16px;">로딩중...</div>
+      </div>
+      <button class="pbtn pbtn-dark" onclick="document.getElementById('rank-overlay').remove()">✕ CLOSE</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  loadRanking().then(list => {
+    const container = document.getElementById('rank-overlay-list');
+    if (!list.length) {
+      container.innerHTML = '<div style="font-size:24px;color:var(--mid);text-align:center;padding:20px;">아직 기록이 없어요!</div>';
+      return;
+    }
+    const medals = ['🥇','🥈','🥉'];
+    container.innerHTML = list.map((e,i) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;
+                  border-bottom:1px solid var(--dot);
+                  ${i===0?'background:rgba(255,215,0,0.1);':i===1?'background:rgba(192,192,192,0.08);':i===2?'background:rgba(205,127,50,0.06);':''}">
+        <div style="font-size:${i<3?'28px':'24px'};width:36px;text-align:center;flex-shrink:0;">
+          ${i<3 ? medals[i] : (i+1)}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:34px;color:var(--dark);line-height:1;">${e.name}</div>
+          <div style="font-size:24px;color:var(--accent2);">${e.score.toLocaleString()} pts</div>
+          <div style="font-size:20px;color:var(--mid);">LV.${e.level} &nbsp;·&nbsp; ${e.cleared}단어</div>
+        </div>
+        <div style="font-size:30px;color:var(--accent3);text-align:right;flex-shrink:0;">${e.wpm}<br>
+          <span style="font-size:16px;color:var(--mid);">WPM</span>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+/* ── 초기 시드 데이터 ── */
+async function seedInitialRankings() {
+  const seedNames = ['제트래곤','까부냥','펭키','운영자'];
+  const seedData = [
+    { name:'제트래곤', score:18500, wpm:95, level:7, cleared:140, date:'2025-04-23' },
+    { name:'운영자',   score:12300, wpm:78, level:6, cleared:110, date:'2025-04-23' },
+    { name:'까부냥',   score:8700,  wpm:62, level:5, cleared:80,  date:'2025-04-23' },
+    { name:'펭키',     score:5400,  wpm:50, level:4, cleared:60,  date:'2025-04-23' },
+  ];
+  try {
+    // 기존 시드 전부 삭제 후 재삽입
+    for (const name of seedNames) {
+      await fetch(
+        `${SB_URL}/rest/v1/rankings?name=eq.${encodeURIComponent(name)}`,
+        { method: 'DELETE', headers: SB_HDR }
+      );
+    }
+    await fetch(`${SB_URL}/rest/v1/rankings`, {
+      method: 'POST',
+      headers: { ...SB_HDR, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(seedData)
+    });
+  } catch { /* 무시 */ }
+}
+
+/* ══════════════════════════════════════════
+   EDITOR
+══════════════════════════════════════════ */
+function openEditor() {
+  if (gameRunning && !paused) pauseGame();
+  document.getElementById('editor-panel').classList.add('active');
+  document.getElementById('word-textarea').value = words.join('\n');
+  updateEditorInfo();
+}
+function updateEditorInfo() {
+  const n = document.getElementById('word-textarea').value
+    .split('\n').map(s=>s.trim()).filter(Boolean).length;
+  document.getElementById('editor-info').textContent = n + ' WORDS LOADED';
+}
+document.getElementById('word-textarea').addEventListener('input', updateEditorInfo);
+function saveWords() {
+  const parsed = [...new Set(
+    document.getElementById('word-textarea').value
+      .split('\n').map(s=>s.trim().toLowerCase().replace(/[^a-z]/g,'')).filter(s=>s.length>=2)
+  )];
+  if (parsed.length < 5) { alert('최소 5개 이상의 단어가 필요합니다!'); return; }
+  words = parsed;
+  resetQueue();
+  closeEditor();
+}
+function closeEditor() {
+  document.getElementById('editor-panel').classList.remove('active');
+  if (gameRunning && paused) wordInput.focus();
+}
+
+/* ══════════════════════════════════════════
+   NICKNAME
+══════════════════════════════════════════ */
+function tryStart() {
+  const val = document.getElementById('nick-input').value.trim();
+  if (!val) {
+    const ni = document.getElementById('nick-input');
+    ni.style.borderColor = 'var(--accent)';
+    ni.placeholder = '이름을 입력해주세요!';
+    return;
+  }
+  nickname = val.slice(0, 10);
+  nickDisp.textContent = nickname;
+  startGame();
+}
+document.getElementById('nick-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') tryStart();
+});
+
+/* ══════════════════════════════════════════
+   GAME CORE
+══════════════════════════════════════════ */
+function startGame() {
+  bombs.forEach(b => b.el && b.el.remove());
+  bombs = []; score = 0; combo = 1; lives = 3; level = 1; totalCleared = 0; paused = false;
+  wpmHistory = []; currentWpm = 0; gameStartTime = Date.now();
+  wordClearTimes = []; suspiciousCount = 0; isBanned = false;
+  resetQueue();
+
+  ['start-screen','gameover-screen','clear-screen','pause-screen'].forEach(id =>
+    document.getElementById(id).classList.remove('active'));
+  document.getElementById('pause-blackout').classList.remove('active');
+  pauseBtn.textContent = '⏸ PAUSE';
+  pauseBtn.classList.add('visible');
+  updateHUD();
+  renderSidebarRank();
+  gameRunning = true;
+  wordInput.value = '';
+  wordInput.focus();
+  scheduleSpawn();
+  cancelAnimationFrame(frameId);
+  frameId = requestAnimationFrame(gameLoop);
+}
+
+function gameLoop() {
+  if (!gameRunning || paused) return;
+  moveBombs();
+  matchHighlight();
+  frameId = requestAnimationFrame(gameLoop);
+}
+
+function togglePause() {
+  if (!gameRunning) return;
+  paused ? resumeGame() : pauseGame();
+}
+function pauseGame() {
+  paused = true;
+  clearTimeout(spawnTimer); cancelAnimationFrame(frameId);
+  document.getElementById('pause-blackout').classList.add('active');
+  document.getElementById('pause-screen').classList.add('active');
+  pauseBtn.textContent = '▶ RESUME';
+}
+function resumeGame() {
+  paused = false;
+  document.getElementById('pause-blackout').classList.remove('active');
+  document.getElementById('pause-screen').classList.remove('active');
+  pauseBtn.textContent = '⏸ PAUSE';
+  scheduleSpawn();
+  frameId = requestAnimationFrame(gameLoop);
+  wordInput.focus();
+}
+function quitToMenu() {
+  gameRunning = false; paused = false;
+  clearTimeout(spawnTimer); cancelAnimationFrame(frameId);
+  bombs.forEach(b => b.el && b.el.remove()); bombs = [];
+  ['pause-screen','gameover-screen','clear-screen'].forEach(id =>
+    document.getElementById(id).classList.remove('active'));
+  pauseBtn.classList.remove('visible');
+  document.getElementById('start-screen').classList.add('active');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && gameRunning) togglePause();
+});
+
+/* ══════════════════════════════════════════
+   SPAWN  (no-repeat queue)
+══════════════════════════════════════════ */
+function scheduleSpawn() {
+  clearTimeout(spawnTimer);
+  if (!gameRunning || paused) return;
+  const cfg = LEVELS[level-1];
+  spawnTimer = setTimeout(() => { spawnBomb(); scheduleSpawn(); },
+    cfg.spawnInterval + (Math.random()*600-300));
+}
+function spawnBomb() {
+  if (paused) return;
+  const cfg = LEVELS[level-1];
+  if (bombs.filter(b=>b.alive).length >= cfg.maxBombs) return;
+
+  const word = nextWord();   // ← no-repeat queue
+  const areaW = gameArea.clientWidth;
+
+  const el    = document.createElement('div'); el.className = 'word-bomb';
+  const icon  = document.createElement('div'); icon.className = 'bomb-pixel';
+  const label = document.createElement('div'); label.className = 'bomb-text'; label.textContent = word;
+  el.appendChild(icon); el.appendChild(label);
+  gameArea.appendChild(el);
+
+  const x = 30 + Math.random() * (areaW - 200);
+  el.style.left = x + 'px'; el.style.top = '-60px';
+  bombs.push({ word, el, label, x, y: -60, speed: cfg.speed + Math.random()*0.12, alive: true });
+}
+
+/* ══════════════════════════════════════════
+   MOVEMENT
+══════════════════════════════════════════ */
+function moveBombs() {
+  const areaH = gameArea.clientHeight, dangerY = areaH - 50;
+  for (const b of bombs) {
+    if (!b.alive) continue;
+    b.y += b.speed;
+    b.el.style.top = b.y + 'px';
+    if (b.y > dangerY - 30) b.el.classList.add('danger');
+    else b.el.classList.remove('danger');
+    if (b.y > areaH) bombEscaped(b);
+  }
+}
+function bombEscaped(b) {
+  b.alive = false;
+  b.el.classList.add('exploding');
+  setTimeout(() => b.el.remove(), 400);
+  lives = Math.max(0, lives-1);
+  combo = 1; updateHUD();
+  if (lives <= 0) endGame();
+}
+
+/* ══════════════════════════════════════════
+   WPM
+══════════════════════════════════════════ */
+function calcWpm(wordLen) {
+  const now = Date.now();
+  wpmHistory.push({ t: now, chars: wordLen + 1 });
+  const cutoff = now - 30000;
+  wpmHistory = wpmHistory.filter(e => e.t > cutoff);
+  const chars   = wpmHistory.reduce((s,e) => s+e.chars, 0);
+  const elapsed = Math.max((now - gameStartTime)/60000, 1/60);
+  currentWpm = Math.round((chars/5) / Math.min(elapsed, 0.5));
+  return currentWpm;
+}
+function updateWpmDisplay(wpm) { /* WPM 표시 제거 — 내부 계산만 유지 */ }
+function showWpmPop(wpm, x, y) {
+  const pop = document.createElement('div');
+  pop.className = 'wpm-pop';
+  pop.style.color = wpm >= 80 ? '#007700' : wpm >= 50 ? '#0055cc' : '#5a4a30';
+  pop.style.textShadow = '2px 2px 0 var(--dark)';
+  pop.textContent = `${wpm} WPM`;
+  pop.style.left = (x+10)+'px'; pop.style.top = (y-20)+'px';
+  gameArea.appendChild(pop);
+  setTimeout(() => pop.remove(), 1100);
+}
+
+/* ══════════════════════════════════════════
+   INPUT
+══════════════════════════════════════════ */
+wordInput.addEventListener('input', matchHighlight);
+wordInput.addEventListener('keydown', e => {
+  // 붙여넣기 차단 (Ctrl+V, Ctrl+A, Ctrl+X, Ctrl+C)
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'Enter') checkWord();
+});
+// 마우스 우클릭 붙여넣기도 차단
+wordInput.addEventListener('paste', e => e.preventDefault());
+wordInput.addEventListener('contextmenu', e => e.preventDefault());
+
+function checkWord() {
+  if (paused) return;
+  const typed = wordInput.value.trim().toLowerCase();
+  if (!typed) return;
+  const hit = bombs.find(b => b.alive && b.word === typed);
+  if (hit) { clearBomb(hit); wordInput.value = ''; matchHighlight(); }
+  else {
+    wordInput.classList.add('wrong');
+    setTimeout(() => wordInput.classList.remove('wrong'), 250);
+    combo = 1; updateHUD();
+  }
+}
+function matchHighlight() {
+  const typed = wordInput.value.trim().toLowerCase();
+  for (const b of bombs) {
+    if (!b.alive) continue;
+    typed && b.word.startsWith(typed)
+      ? b.el.classList.add('matched')
+      : b.el.classList.remove('matched');
+  }
+}
+function clearBomb(b) {
+  if (isBanned) return;
+
+  b.alive = false;
+  b.el.classList.remove('danger','matched');
+  b.el.classList.add('cleared');
+
+  // ── 봇 감지: 단어 입력 속도 체크 ──
+  const now = Date.now();
+  wordClearTimes.push(now);
+  // 최근 5개 클리어 시간 유지
+  if (wordClearTimes.length > 5) wordClearTimes.shift();
+  if (wordClearTimes.length >= 3) {
+    // 최근 3단어를 평균 0.6초 미만으로 클리어하면 봇 의심
+    const intervals = [];
+    for (let i = 1; i < wordClearTimes.length; i++) {
+      intervals.push(wordClearTimes[i] - wordClearTimes[i-1]);
+    }
+    const avgInterval = intervals.reduce((a,b) => a+b, 0) / intervals.length;
+    if (avgInterval < 600) {
+      suspiciousCount++;
+      if (suspiciousCount >= 3) {
+        triggerBan('비정상적인 입력 속도가 감지되었습니다.');
+        return;
+      }
+    } else {
+      suspiciousCount = Math.max(0, suspiciousCount - 1); // 정상이면 차감
+    }
+  }
+
+  const wpm = calcWpm(b.word.length);
+  updateWpmDisplay(wpm);
+  const rect = b.el.getBoundingClientRect();
+  const areaRect = gameArea.getBoundingClientRect();
+  const bx = rect.left - areaRect.left + rect.width/2;
+  const by = rect.top  - areaRect.top;
+  showWpmPop(wpm, bx, by);
+  showMeaningPop(b.word, bx, by + 30);
+
+  setTimeout(() => b.el.remove(), 350);
+  const pts = b.word.length * 10 * combo;
+  score += pts; combo = Math.min(combo+1, 8); totalCleared++;
+  updateHUD(); showCombo(combo, pts); checkLevelUp();
+}
+
+/* ── 치트 감지 시 제재 ── */
+function triggerBan(reason) {
+  isBanned = true;
+  gameRunning = false;
+  clearTimeout(spawnTimer); cancelAnimationFrame(frameId);
+  bombs.forEach(b => { b.alive=false; b.el && b.el.remove(); }); bombs = [];
+  pauseBtn.classList.remove('visible');
+  document.getElementById('pause-blackout').classList.remove('active');
+
+  // 제재 화면 표시
+  const banDiv = document.createElement('div');
+  banDiv.style.cssText = `
+    position:fixed;inset:0;background:rgba(0,0,0,0.95);
+    z-index:999;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:20px;
+  `;
+  banDiv.innerHTML = `
+    <div style="font-family:'Press Start 2P',monospace;font-size:28px;color:#ff4040;
+                text-shadow:4px 4px 0 #800;letter-spacing:4px;text-align:center;">
+      ⚠ CHEAT<br>DETECTED
+    </div>
+    <div style="font-family:'VT323',monospace;font-size:26px;color:#ff8888;text-align:center;line-height:2;">
+      ${reason}<br>
+      이 게임 기록은 저장되지 않습니다.<br>
+      정정당당하게 플레이해주세요!
+    </div>
+    <button onclick="location.reload()" style="
+      font-family:'Press Start 2P',monospace;font-size:11px;
+      padding:12px 24px;background:#ff4040;color:#fff;
+      border:3px solid #fff;cursor:pointer;letter-spacing:2px;
+      box-shadow:4px 4px 0 #800;
+    ">↺ 다시 시작</button>
+  `;
+  document.body.appendChild(banDiv);
+}
+function showCombo(c, pts) {
+  comboFlash.classList.remove('show'); void comboFlash.offsetWidth;
+  if (c>2) { comboFlash.textContent=`×${c} COMBO! +${pts}`; comboFlash.style.color='var(--accent3)'; }
+  else      { comboFlash.textContent=`+${pts}`;              comboFlash.style.color='var(--accent2)'; }
+  comboFlash.classList.add('show');
+}
+function checkLevelUp() {
+  if (totalCleared >= level * BOMBS_PER_LEVEL) {
+    if (level < LEVELS.length) {
+      level++;
+    }
+    // 레벨 10 이후엔 레벨 유지, 계속 진행 (클리어 없음)
+    updateHUD();
+    comboFlash.classList.remove('show'); void comboFlash.offsetWidth;
+    comboFlash.textContent = level < LEVELS.length + 1
+      ? `★ LEVEL ${level}! ★`
+      : `★ MAX LEVEL! ★`;
+    comboFlash.style.color = 'var(--accent)';
+    comboFlash.classList.add('show');
+  }
+}
+
+/* ══════════════════════════════════════════
+   HUD
+══════════════════════════════════════════ */
+function updateHUD() {
+  scoreDisp.textContent = score.toLocaleString();
+  comboDisp.textContent = '×' + combo;
+  livesDisp.textContent = '♥'.repeat(lives) + '♡'.repeat(Math.max(0,3-lives));
+  const prev = (level-1)*BOMBS_PER_LEVEL;
+  const prog = Math.min((totalCleared-prev)/BOMBS_PER_LEVEL, 1);
+  lvbarFill.style.width = (prog*100)+'%';
+  // sidebar stats
+  sbScoreVal.textContent   = score.toLocaleString();
+  sbLevelVal.textContent   = level;
+  sbClearedVal.textContent = totalCleared + '개';
+  const remaining = level*BOMBS_PER_LEVEL - totalCleared;
+  sbNextVal.textContent    = Math.max(remaining, 0) + '개 남음';
+}
+
+/* ══════════════════════════════════════════
+   END STATES
+══════════════════════════════════════════ */
+async function endGame() {
+  gameRunning = false;
+  clearTimeout(spawnTimer); cancelAnimationFrame(frameId);
+  bombs.forEach(b => { b.alive=false; b.el && b.el.remove(); }); bombs = [];
+  pauseBtn.classList.remove('visible');
+
+  // 점수 저장
+  if (nickname) await submitScore(score, currentWpm, level, totalCleared);
+
+  // 화면 기본값 먼저 표시
+  document.getElementById('go-score').textContent = score.toLocaleString() + '점';
+  document.getElementById('go-level').textContent = level + ' 레벨';
+  document.getElementById('go-rank').textContent  = '...';
+  document.getElementById('gameover-screen').classList.add('active');
+
+  // 랭킹 계산해서 몇 위인지 표시
+  const list = await loadRanking();
+  renderSidebarRank();
+  const rankIdx = list.findIndex(e => e.name === nickname && Number(e.cleared) === totalCleared);
+  const myRank  = rankIdx >= 0 ? rankIdx + 1 : list.length + 1;
+  document.getElementById('go-rank').textContent = myRank + '위!';
+
+  // 1~3위면 색상 강조
+  const rankEl = document.getElementById('go-rank');
+  if      (myRank === 1) { rankEl.style.color = '#ffd700'; rankEl.style.textShadow = '4px 4px 0 #443300'; }
+  else if (myRank === 2) { rankEl.style.color = '#c0c0c0'; rankEl.style.textShadow = '4px 4px 0 #333'; }
+  else if (myRank === 3) { rankEl.style.color = '#cd7f32'; rankEl.style.textShadow = '4px 4px 0 #332200'; }
+  else                   { rankEl.style.color = 'var(--accent)'; rankEl.style.textShadow = '4px 4px 0 #440000'; }
+}
+async function gameClear() {
+  gameRunning = false;
+  clearTimeout(spawnTimer); cancelAnimationFrame(frameId);
+  pauseBtn.classList.remove('visible');
+
+  if (nickname) { await submitScore(score, currentWpm, level, totalCleared); renderSidebarRank(); }
+
+  document.getElementById('clear-score-text').innerHTML =
+    `SCORE: ${score.toLocaleString()}<br>LV.${level} &nbsp;|&nbsp; ALL ${totalCleared}개 클리어!`;
+  document.getElementById('clear-screen').classList.add('active');
+}
+
+/* ── focus guard ── */
+document.addEventListener('click', e => {
+  if (gameRunning && !paused &&
+      !e.target.closest('.overlay') &&
+      !e.target.closest('#editor-panel') &&
+      !e.target.closest('#sidebar') &&
+      !e.target.closest('#pause-btn'))
+    wordInput.focus();
+});
+
+/* ── init ── */
+updateHUD();
+seedInitialRankings().then(() => renderSidebarRank());
+</script>
+</body>
+</html>
