@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 회식 투표 결과</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', -apple-system, sans-serif;
+    background: #f8f9fa;
+    min-height: 100vh;
+    color: #1a1a2e;
+  }
+
+  /* Login */
+  .login-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .login-box {
+    background: white;
+    border-radius: 24px;
+    padding: 40px 32px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  .login-icon { font-size: 48px; margin-bottom: 12px; }
+  .login-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+  .pin-input {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .pin-input input {
+    width: 52px; height: 64px;
+    border: 2px solid #e8e8e8;
+    border-radius: 12px;
+    font-size: 24px;
+    font-weight: 800;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s;
+    color: #1a1a2e;
+  }
+  .pin-input input:focus { border-color: #1a1a2e; }
+  .btn-login {
+    width: 100%;
+    padding: 14px;
+    background: #1a1a2e;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-login:hover { background: #16213e; }
+  .login-error { color: #ff4757; font-size: 13px; margin-top: 10px; display: none; }
+
+  /* Dashboard */
+  #dashboard { display: none; }
+  .dash-header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    padding: 24px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .dash-header h1 { font-size: 20px; font-weight: 800; }
+  .dash-header .voted-count {
+    font-size: 13px;
+    background: rgba(255,255,255,0.15);
+    padding: 6px 14px;
+    border-radius: 20px;
+  }
+
+  .dash-body { max-width: 720px; margin: 0 auto; padding: 20px 16px; }
+
+  .card {
+    background: white;
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .card-title {
+    font-size: 16px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    color: #1a1a2e;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Bar chart */
+  .bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .bar-label {
+    width: 110px;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bar-wrap { flex: 1; background: #f5f5f5; border-radius: 8px; overflow: hidden; height: 32px; }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #1a1a2e, #3b82f6);
+    border-radius: 8px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    min-width: 0;
+  }
+  .bar-count {
+    width: 32px;
+    font-size: 14px;
+    font-weight: 800;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Who voted table */
+  .vote-table { width: 100%; border-collapse: collapse; }
+  .vote-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .vote-table td {
+    padding: 12px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid #f8f8f8;
+    vertical-align: top;
+  }
+  .vote-table tr:last-child td { border-bottom: none; }
+  .name-badge {
+    display: inline-block;
+    background: #1a1a2e;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .tag {
+    display: inline-block;
+    background: #f0f4ff;
+    color: #3b82f6;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 2px;
+  }
+  .tag.date { background: #f0fdf4; color: #16a34a; }
+
+  /* Not voted */
+  .not-voted {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .not-voted-badge {
+    background: #fff0f0;
+    color: #ff4757;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .btn-refresh {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 8px;
+    color: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-refresh:hover { background: rgba(255,255,255,0.25); }
+
+  .loading { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">관리자 확인</div>
+    <div class="login-sub">4자리 비밀번호를 입력해주세요</div>
+    <div class="pin-input">
+      <input type="password" maxlength="1" id="p1" oninput="nextPin(this,'p2')">
+      <input type="password" maxlength="1" id="p2" oninput="nextPin(this,'p3')">
+      <input type="password" maxlength="1" id="p3" oninput="nextPin(this,'p4')">
+      <input type="password" maxlength="1" id="p4" oninput="nextPin(this,null)">
+    </div>
+    <button class="btn-login" onclick="checkPin()">확인</button>
+    <div class="login-error" id="loginError">❌ 비밀번호가 틀렸습니다</div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+  <div class="dash-header">
+    <h1>📊 회식 투표 결과</h1>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <div class="voted-count" id="votedCount">— / 7명 투표</div>
+      <button class="btn-refresh" onclick="loadResults()">🔄 새로고침</button>
+    </div>
+  </div>
+
+  <div class="dash-body">
+
+    <!-- 미투표자 -->
+    <div class="card" id="notVotedCard" style="display:none;">
+      <div class="card-title">⚠️ 아직 투표 안 한 팀원</div>
+      <div class="not-voted" id="notVotedList"></div>
+    </div>
+
+    <!-- 식당 결과 -->
+    <div class="card">
+      <div class="card-title">🍽️ 식당 선호도</div>
+      <div id="restaurantBars"><div class="loading">불러오는 중...</div></div>
+    </div>
+
+    <!-- 날짜 결과 -->
+    <div class="card">
+      <div class="card-title">📅 날짜 가능 인원</div>
+      <div id="dateBars"><div class="loading">불러오는 중...</div></div>
+    </div>
+
+    <!-- 개인별 투표 내역 -->
+    <div class="card">
+      <div class="card-title">👥 개인별 투표 내역</div>
+      <div id="voteList"><div class="loading">불러오는 중...</div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SB_URL = 'https://mkxyvwhgjpqwgzpzbnwz.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1reHl2d2hnanBxd2d6cHpibnd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5MTA4MzksImV4cCI6MjA5MjQ4NjgzOX0.DU3YT_Y7S6y4qCM-Fgw5WZsgSsL70E6YzeAq462GNNA';
+const SB_HDR = {
+  'Content-Type': 'application/json',
+  'apikey': SB_KEY,
+  'Authorization': 'Bearer ' + SB_KEY
+};
+const CORRECT_PIN = '1010';
+const ALL_MEMBERS = ['규석','시현','인경','정아','종규','준호','지수','지현'];
+const RESTAURANTS = ['마오','서초장어타운','타츠키'];
+
+// PIN
+function nextPin(el, nextId) {
+  if (el.value.length === 1 && nextId) {
+    document.getElementById(nextId).focus();
+  }
+  if (!nextId) checkPin();
+}
+
+function checkPin() {
+  const pin = ['p1','p2','p3','p4'].map(id => document.getElementById(id).value).join('');
+  if (pin === CORRECT_PIN) {
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    loadResults();
+    setInterval(loadResults, 30000);
+  } else {
+    document.getElementById('loginError').style.display = 'block';
+    ['p1','p2','p3','p4'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('p1').focus();
+  }
+}
+
+document.getElementById('p1').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPin();
+});
+
+async function loadResults() {
+  try {
+    const res = await fetch(
+      `${SB_URL}/rest/v1/dinner_votes?order=created_at.asc&limit=100`,
+      { headers: SB_HDR }
+    );
+    const data = await res.json();
+
+    // 닉네임별 최신 1개만 유지
+    const best = {};
+    for (const row of data) {
+      best[row.name] = row;
+    }
+    const votes = Object.values(best);
+
+    // 투표 수 표시
+    document.getElementById('votedCount').textContent = `${votes.length} / ${ALL_MEMBERS.length}명 투표`;
+
+    // 미투표자
+    const votedNames = votes.map(v => v.name);
+    const notVoted = ALL_MEMBERS.filter(m => !votedNames.includes(m));
+    const notVotedCard = document.getElementById('notVotedCard');
+    if (notVoted.length > 0) {
+      notVotedCard.style.display = 'block';
+      document.getElementById('notVotedList').innerHTML =
+        notVoted.map(n => `<div class="not-voted-badge">${n}</div>`).join('');
+    } else {
+      notVotedCard.style.display = 'none';
+    }
+
+    // 식당 집계
+    const restCount = {};
+    RESTAURANTS.forEach(r => restCount[r] = 0);
+    for (const v of votes) {
+      const rests = JSON.parse(v.restaurants || '[]');
+      rests.forEach(r => { if (restCount[r] !== undefined) restCount[r]++; });
+    }
+    const maxR = Math.max(...Object.values(restCount), 1);
+    document.getElementById('restaurantBars').innerHTML =
+      RESTAURANTS.map(r => `
+        <div class="bar-row">
+          <div class="bar-label">${r}</div>
+          <div class="bar-wrap">
+            <div class="bar-fill" style="width:${(restCount[r]/maxR*100)}%">
+              ${restCount[r] > 0 ? `<span style="color:white;font-size:12px;font-weight:700">${restCount[r]}명</span>` : ''}
+            </div>
+          </div>
+          <div class="bar-count">${restCount[r]}</div>
+        </div>
+      `).join('');
+
+    // 날짜 집계
+    const dateCount = {};
+    for (const v of votes) {
+      const dates = JSON.parse(v.dates || '[]');
+      dates.forEach(d => {
+        if (!dateCount[d]) dateCount[d] = 0;
+        dateCount[d]++;
+      });
+    }
+    const sortedDates = Object.entries(dateCount)
+      .sort((a,b) => {
+        const da = parseInt(a[0].replace(/[^0-9]/g,''));
+        const db = parseInt(b[0].replace(/[^0-9]/g,''));
+        return da - db;
+      });
+    const maxD = sortedDates.length > 0 ? Math.max(...sortedDates.map(e=>e[1]), 1) : 1;
+    document.getElementById('dateBars').innerHTML = sortedDates.length === 0
+      ? '<div style="color:#aaa;font-size:13px;text-align:center;padding:16px;">아직 투표 없음</div>'
+      : sortedDates.map(([date, cnt]) => `
+        <div class="bar-row">
+          <div class="bar-label">${date}</div>
+          <div class="bar-wrap">
+            <div class="bar-fill" style="width:${(cnt/maxD*100)}%;background:linear-gradient(90deg,#1a1a2e,#16a34a)">
+              ${cnt > 0 ? `<span style="color:white;font-size:12px;font-weight:700">${cnt}명</span>` : ''}
+            </div>
+          </div>
+          <div class="bar-count">${cnt}</div>
+        </div>
+      `).join('');
+
+    // 개인별 내역
+    document.getElementById('voteList').innerHTML = votes.length === 0
+      ? '<div style="color:#aaa;font-size:13px;text-align:center;padding:16px;">아직 투표 없음</div>'
+      : `<table class="vote-table">
+          <thead><tr>
+            <th>이름</th><th>선택한 식당</th><th>가능한 날짜</th>
+          </tr></thead>
+          <tbody>
+            ${votes.map(v => {
+              const rests = JSON.parse(v.restaurants || '[]');
+              const dates = JSON.parse(v.dates || '[]');
+              return `<tr>
+                <td><div class="name-badge">${v.name}</div></td>
+                <td>${rests.map(r=>`<span class="tag">${r}</span>`).join('')}</td>
+                <td>${dates.map(d=>`<span class="tag date">${d}</span>`).join('')}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('loginWrap').style.display !== 'none') {
+    checkPin();
+  }
+});
+</script>
+</body>
+</html>
